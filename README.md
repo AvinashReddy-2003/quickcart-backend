@@ -3,9 +3,9 @@
 Shared backend for the QuickCart super-app (food → grocery → e-commerce).
 NestJS + PostgreSQL + Redis + Prisma, in TypeScript.
 
-> **Status: Phase 0 — Foundation ✅ complete.**
-> A user can request an OTP, log in, and hit a protected endpoint. Role-based
-> access control (customer / vendor / rider / admin) is enforced.
+> **Status: Phase 0 (Foundation) ✅ · Phase 1 (Browse & Discover) ✅**
+> Users can log in via OTP → JWT with role-based access control, and browse a
+> searchable, filterable restaurant + menu catalog.
 
 ## Stack
 
@@ -62,6 +62,13 @@ Base path: `/api`
 | POST   | `/auth/refresh`     | –            | Exchange refresh token for new tokens        |
 | GET    | `/users/me`         | Bearer       | Current user (the protected endpoint)        |
 | GET    | `/users`            | Bearer ADMIN | List users (RBAC demo)                       |
+| GET    | `/restaurants`      | –            | List/browse restaurants (search, filter, paginate) |
+| GET    | `/restaurants/:id`  | –            | Restaurant detail                            |
+| GET    | `/restaurants/:id/menu` | –        | Menu items (filter by category, veg, price, search) |
+
+**Browse query params** — `/restaurants`: `search`, `cuisine`, `isVeg`,
+`page`, `limit`. `/restaurants/:id/menu`: `search`, `category`, `isVeg`,
+`minPrice`, `maxPrice`.
 
 ### Quick manual test
 
@@ -82,5 +89,8 @@ curl localhost:3000/api/users/me -H "Authorization: Bearer <accessToken>"
   response instead of being sent by SMS. Wire a provider (MSG91/Twilio) before
   production (Phase 6).
 - `ADMIN` cannot be self-assigned at signup; seed or promote admins directly.
-- **Phase 1 (Browse & Discover)** is next: `GET /restaurants`,
-  `GET /restaurants/:id/menu`, plus search & filters.
+- **Search** currently uses case-insensitive `contains` matching. Upgrade to
+  Postgres full-text search (tsvector) when the catalog grows.
+- Seeding is idempotent: an admin plus 3 sample Hyderabad restaurants with menus.
+- **Phase 2 (Cart, Checkout & Payment)** is next: cart, addresses, transparent
+  bill, and Razorpay (test mode) order creation.
