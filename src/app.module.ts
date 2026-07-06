@@ -6,7 +6,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { RedisModule } from './redis/redis.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
-import { RestaurantsModule } from './restaurants/restaurants.module';
+import { StoresModule } from './stores/stores.module';
 
 @Module({
   imports: [
@@ -15,7 +15,7 @@ import { RestaurantsModule } from './restaurants/restaurants.module';
     RedisModule,
     AuthModule,
     UsersModule,
-    RestaurantsModule,
+    StoresModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -4,8 +4,8 @@ import { IsBoolean, IsNumber, IsOptional, IsString, Min } from 'class-validator'
 const toBool = ({ value }: { value: unknown }) =>
   value === true || value === 'true';
 
-export class MenuQueryDto {
-  /** Free-text search across item name and description. */
+export class ProductQueryDto {
+  /** Free-text search across product name and description. */
   @IsOptional()
   @IsString()
   search?: string;
@@ -14,6 +14,7 @@ export class MenuQueryDto {
   @IsString()
   category?: string;
 
+  /** Food filter: vegetarian items only. */
   @IsOptional()
   @Transform(toBool)
   @IsBoolean()

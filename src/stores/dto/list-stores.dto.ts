@@ -1,18 +1,25 @@
 import { Transform, Type } from 'class-transformer';
 import {
   IsBoolean,
+  IsEnum,
   IsInt,
   IsOptional,
   IsString,
   Max,
   Min,
 } from 'class-validator';
+import { Vertical } from '../../../generated/prisma';
 
 const toBool = ({ value }: { value: unknown }) =>
   value === true || value === 'true';
 
-export class ListRestaurantsDto {
-  /** Free-text search across restaurant name and cuisine. */
+export class ListStoresDto {
+  /** Restrict to one vertical: FOOD | GROCERY | SHOP. */
+  @IsOptional()
+  @IsEnum(Vertical)
+  vertical?: Vertical;
+
+  /** Free-text search across store name and cuisine. */
   @IsOptional()
   @IsString()
   search?: string;
@@ -21,6 +28,7 @@ export class ListRestaurantsDto {
   @IsString()
   cuisine?: string;
 
+  /** Food filter: pure-veg stores only. */
   @IsOptional()
   @Transform(toBool)
   @IsBoolean()
