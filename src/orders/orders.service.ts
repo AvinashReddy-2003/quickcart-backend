@@ -9,6 +9,7 @@ import { CartService } from '../cart/cart.service';
 import { AddressesService } from '../addresses/addresses.service';
 import { PaymentService } from '../payments/payment.service';
 import { PricingService } from '../pricing/pricing.service';
+import { SimulationService } from '../tracking/simulation.service';
 import { PaymentStatus } from '../../generated/prisma';
 import { CheckoutDto } from './dto/checkout.dto';
 import { VerifyPaymentDto } from './dto/verify-payment.dto';
@@ -20,6 +21,7 @@ export class OrdersService {
     private readonly cart: CartService,
     private readonly addresses: AddressesService,
     private readonly payment: PaymentService,
+    private readonly simulation: SimulationService,
   ) {}
 
   /**
@@ -119,7 +121,73 @@ export class OrdersService {
 
     // Payment succeeded — the cart has become this order.
     await this.cart.clear(userId);
+
+    // Kick off the (simulated) delivery: rider assignment + live tracking.
+    void this.simulation.start(order.id);
+
     return this.getOne(userId, order.id);
+  }
+
+  /** Current delivery state for a map: order status, rider, live location. */
+  async getTracking(userId: string, orderId: string) {
+    const order = await this.prisma.order.findFirst({
+      where: { id: orderId, customerId: userId },
+      include: {
+        store: { select: { name: true, latitude: true, longitude: true } },
+        address: { select: { latitude: true, longitude: true } },
+      },
+    });
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    const live = this.simulation.getState(orderId);
+    const lat = live?.lat ?? order.riderLat ?? null;
+    const lng = live?.lng ?? order.riderLng ?? null;
+
+    return {
+      orderId: order.id,
+      status: live?.status ?? order.status,
+      paymentStatus: order.paymentStatus,
+      rider: order.riderName
+        ? {
+            name: order.riderName,
+            phone: order.riderPhone,
+            vehicle: order.riderVehicle,
+          }
+        : null,
+      riderLocation: lat !== null && lng !== null ? { lat, lng } : null,
+      store: {
+        name: order.store.name,
+        lat: order.store.latitude,
+        lng: order.store.longitude,
+      },
+      destination: order.address
+        ? { lat: order.address.latitude, lng: order.address.longitude }
+        : null,
+    };
+  }
+
+  /** Repopulate the cart from a past order (skips unavailable items). */
+  async reorder(userId: string, orderId: string) {
+    const order = await this.prisma.order.findFirst({
+      where: { id: orderId, customerId: userId },
+      include: { items: true },
+    });
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+
+    await this.cart.clear(userId);
+    const skipped: string[] = [];
+    for (const item of order.items) {
+      try {
+        await this.cart.add(userId, item.productId, item.quantity);
+      } catch {
+        skipped.push(item.productId);
+      }
+    }
+    return { cart: await this.cart.getDetailed(userId), skipped };
   }
 
   listMine(userId: string) {

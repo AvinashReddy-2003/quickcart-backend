@@ -67,6 +67,8 @@ model Address {
   line2     String?
   city      String
   pincode   String
+  latitude  Float?
+  longitude Float?
   isDefault Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -89,6 +91,8 @@ model Store {
   isVeg       Boolean  @default(false)
   imageUrl    String?
   rating      Float?
+  latitude    Float?
+  longitude   Float?
   isActive    Boolean  @default(true)
   vendorId    String?
   vendor      User?    @relation("VendorStores", fields: [vendorId], references: [id])
@@ -120,6 +124,7 @@ model Product {
 
   orderItems OrderItem[]
 
+  @@unique([storeId, name])
   @@index([storeId])
   @@map("products")
 }
@@ -142,6 +147,13 @@ model Order {
   // Payment provider references (Razorpay, or mock in dev).
   paymentOrderId String?
   paymentId      String?
+  // Delivery: assigned (simulated) rider + last known location snapshot.
+  riderName     String?
+  riderPhone    String?
+  riderVehicle  String?
+  riderLat      Float?
+  riderLng      Float?
+  deliveredAt   DateTime?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 

@@ -37,41 +37,42 @@ async function seedStore(
     isVeg?: boolean;
     address: string;
     description: string;
+    latitude: number;
+    longitude: number;
     products: SeedProduct[];
   },
 ) {
+  const base = {
+    name: store.name,
+    vertical: store.vertical,
+    cuisine: store.cuisine,
+    isVeg: store.isVeg ?? false,
+    address: store.address,
+    description: store.description,
+    latitude: store.latitude,
+    longitude: store.longitude,
+  };
   await prisma.store.upsert({
     where: { id },
-    update: {
-      name: store.name,
-      vertical: store.vertical,
-      cuisine: store.cuisine,
-      isVeg: store.isVeg ?? false,
-      address: store.address,
-      description: store.description,
-    },
-    create: {
-      id,
-      name: store.name,
-      vertical: store.vertical,
-      cuisine: store.cuisine,
-      isVeg: store.isVeg ?? false,
-      address: store.address,
-      description: store.description,
-    },
+    update: base,
+    create: { id, ...base },
   });
 
-  await prisma.product.deleteMany({ where: { storeId: id } });
-  await prisma.product.createMany({
-    data: store.products.map((p) => ({
-      storeId: id,
-      name: p.name,
+  // Upsert products by (storeId, name) so reseeding is safe even when some
+  // products are already referenced by existing orders.
+  for (const p of store.products) {
+    const data = {
       description: p.description,
       price: p.price,
       category: p.category,
       isVeg: p.isVeg ?? null,
-    })),
-  });
+    };
+    await prisma.product.upsert({
+      where: { storeId_name: { storeId: id, name: p.name } },
+      update: data,
+      create: { storeId: id, name: p.name, ...data },
+    });
+  }
   console.log(`Store [${store.vertical}]: ${store.name} (${store.products.length} products)`);
 }
 
@@ -86,6 +87,8 @@ async function main() {
     isVeg: false,
     address: 'Secunderabad, Hyderabad',
     description: 'Hyderabadi • Veg & non-veg',
+    latitude: 17.4399,
+    longitude: 78.4983,
     products: [
       { name: 'Chicken Dum Biryani', description: 'Signature Hyderabadi dum biryani', price: 320, category: 'Biryani', isVeg: false },
       { name: 'Mutton Biryani', description: 'Tender mutton, aromatic rice', price: 420, category: 'Biryani', isVeg: false },
@@ -102,6 +105,8 @@ async function main() {
     isVeg: true,
     address: 'Banjara Hills, Hyderabad',
     description: 'South Indian • Pure veg',
+    latitude: 17.4126,
+    longitude: 78.4448,
     products: [
       { name: 'Masala Dosa', description: 'Crispy dosa with potato masala', price: 160, category: 'Tiffins', isVeg: true },
       { name: 'Idli (2 pcs)', description: 'Steamed rice cakes with chutney', price: 90, category: 'Tiffins', isVeg: true },
@@ -117,6 +122,8 @@ async function main() {
     isVeg: false,
     address: 'Gachibowli, Hyderabad',
     description: 'Italian • Veg & non-veg',
+    latitude: 17.4401,
+    longitude: 78.3489,
     products: [
       { name: 'Margherita Pizza', description: 'Classic cheese and tomato', price: 250, category: 'Pizza', isVeg: true },
       { name: 'Chicken Pepperoni Pizza', description: 'Loaded pepperoni', price: 420, category: 'Pizza', isVeg: false },
@@ -131,6 +138,8 @@ async function main() {
     vertical: Vertical.GROCERY,
     address: 'Kondapur, Hyderabad',
     description: 'Daily essentials delivered in minutes',
+    latitude: 17.4615,
+    longitude: 78.364,
     products: [
       { name: 'Amul Milk 1L', description: 'Full-cream toned milk', price: 66, category: 'Dairy' },
       { name: 'Brown Bread', description: 'Whole-wheat loaf, 400g', price: 45, category: 'Bakery' },
@@ -146,6 +155,8 @@ async function main() {
     vertical: Vertical.SHOP,
     address: 'Online • Ships across Hyderabad',
     description: 'Electronics and gadgets at great prices',
+    latitude: 17.42,
+    longitude: 78.45,
     products: [
       { name: 'Wireless Earbuds', description: 'Bluetooth 5.3, 30h battery', price: 1999, category: 'Audio' },
       { name: 'USB-C Fast Charger 33W', description: 'Compact fast charging adapter', price: 799, category: 'Accessories' },

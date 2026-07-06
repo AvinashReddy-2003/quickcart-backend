@@ -1,10 +1,13 @@
 import {
   IsBoolean,
+  IsLatitude,
+  IsLongitude,
   IsOptional,
   IsString,
   Length,
   Matches,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateAddressDto {
   @IsOptional()
@@ -27,6 +30,16 @@ export class CreateAddressDto {
 
   @Matches(/^\d{6}$/, { message: 'pincode must be 6 digits' })
   pincode: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsLatitude()
+  latitude?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsLongitude()
+  longitude?: number;
 
   @IsOptional()
   @IsBoolean()

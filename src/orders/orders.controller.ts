@@ -41,4 +41,20 @@ export class OrdersController {
   ) {
     return this.orders.getOne(user.id, id);
   }
+
+  @Get('orders/:id/tracking')
+  tracking(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.orders.getTracking(user.id, id);
+  }
+
+  @Post('orders/:id/reorder')
+  reorder(
+    @CurrentUser() user: AuthUser,
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.orders.reorder(user.id, id);
+  }
 }

@@ -3,12 +3,13 @@
 Shared backend for the QuickCart super-app (food → grocery → e-commerce).
 NestJS + PostgreSQL + Redis + Prisma, in TypeScript.
 
-> **Status: Phase 0 ✅ · Phase 1 (Browse) ✅ · Phase 2 (Cart & Checkout) ✅**
-> Users log in via OTP → JWT (RBAC) and browse a single **multi-vertical**
-> catalog — **FOOD** (Zomato-style), **GROCERY**, **SHOP** (Amazon-style) — on
-> one `Store` + `Product` model. They can build a cart, apply coupons, checkout
-> against a saved address, pay, and get a persisted order. **A test-paid order
-> lands in the database — the money logic works.**
+> **Status: Phase 0 ✅ · 1 Browse ✅ · 2 Cart & Checkout ✅ · 3 Live Tracking ✅**
+> Full customer path works end to end on one **multi-vertical** engine — **FOOD**
+> (Zomato-style), **GROCERY**, **SHOP** (Amazon-style): log in (OTP → JWT/RBAC) →
+> browse & search → cart + coupons → checkout against a saved address → pay →
+> **watch the order move on a live map** as a simulated rider drives it to the
+> door → reorder. A test-paid order lands in the DB; delivery streams over
+> WebSockets.
 
 ## Stack
 
@@ -77,6 +78,27 @@ Base path: `/api`
 | POST   | `/checkout`         | Bearer       | Turn cart into an order + open payment |
 | POST   | `/payments/verify`  | Bearer       | Confirm payment (idempotent)         |
 | GET    | `/orders`, `/orders/:id` | Bearer  | Order history & detail               |
+| GET    | `/orders/:id/tracking` | Bearer   | Delivery snapshot (status, rider, live location) |
+| POST   | `/orders/:id/reorder` | Bearer    | Refill the cart from a past order    |
+
+### Live delivery tracking (WebSocket)
+
+Socket.IO namespace **`/tracking`**. After payment, a **simulated rider** is
+assigned and drives from the store to the customer; the order advances
+`PREPARING → OUT_FOR_DELIVERY → DELIVERED` automatically.
+
+```js
+const socket = io('http://localhost:3000/tracking', { transports: ['websocket'] });
+socket.on('connect', () => socket.emit('subscribe', { token, orderId }));
+socket.on('snapshot',       (s) => {}); // initial state on connect / reconnect
+socket.on('rider:assigned', (r) => {});
+socket.on('order:status',   (s) => {}); // { status }
+socket.on('rider:location', (l) => {}); // { lat, lng, progress }
+socket.on('order:delivered',(d) => {});
+```
+
+Subscribe is JWT-authed and scoped to the order's owner. `GET /orders/:id/tracking`
+gives the same state over REST for the initial map render or after a dropped socket.
 
 **Browse query params** — `/stores`: `vertical` (`FOOD`/`GROCERY`/`SHOP`),
 `search`, `cuisine`, `isVeg`, `page`, `limit`. `/stores/:id/products`:
@@ -122,5 +144,8 @@ curl localhost:3000/api/users/me -H "Authorization: Bearer <accessToken>"
   idempotent, so a repeated call can't double-charge.
 - Serviceability is a placeholder (Hyderabad `5xxxxx` pincodes); wire real
   geo/serviceability later.
-- **Phase 3 (Orders & Live Tracking)** is next: order status lifecycle, a
-  delivery flow, and real-time map tracking over WebSockets.
+- **Delivery is simulated** (the "student-smart shortcut"): a fake rider is
+  auto-assigned and interpolated from store → customer over ~35s. Swap in the
+  real vendor/delivery apps in later phases without touching the customer flow.
+- **Next:** the visible customer app (a Zomato/Amazon-style UI on these APIs),
+  or Phase 4/5 backend (real vendor dashboard + admin console).
