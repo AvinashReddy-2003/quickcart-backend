@@ -36,6 +36,12 @@ enum OrderStatus {
   CANCELLED
 }
 
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+}
+
 model User {
   id        String   @id @default(uuid())
   phone     String   @unique
@@ -45,10 +51,30 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  stores Store[] @relation("VendorStores")
-  orders Order[]
+  stores    Store[]   @relation("VendorStores")
+  orders    Order[]
+  addresses Address[]
 
   @@map("users")
+}
+
+model Address {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label     String? // e.g. "Home", "Work"
+  line1     String
+  line2     String?
+  city      String
+  pincode   String
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  orders Order[]
+
+  @@index([userId])
+  @@map("addresses")
 }
 
 /// A merchant in any vertical: a restaurant, a grocery store, or a shop.
@@ -99,20 +125,29 @@ model Product {
 }
 
 model Order {
-  id         String      @id @default(uuid())
-  customerId String
-  customer   User        @relation(fields: [customerId], references: [id])
-  storeId    String
-  store      Store       @relation(fields: [storeId], references: [id])
-  status     OrderStatus @default(PLACED)
-  subtotal   Decimal     @default(0) @db.Decimal(10, 2)
-  deliveryFee Decimal    @default(0) @db.Decimal(10, 2)
-  total      Decimal     @default(0) @db.Decimal(10, 2)
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+  id            String        @id @default(uuid())
+  customerId    String
+  customer      User          @relation(fields: [customerId], references: [id])
+  storeId       String
+  store         Store         @relation(fields: [storeId], references: [id])
+  addressId     String?
+  address       Address?      @relation(fields: [addressId], references: [id])
+  status        OrderStatus   @default(PLACED)
+  paymentStatus PaymentStatus @default(PENDING)
+  subtotal      Decimal       @default(0) @db.Decimal(10, 2)
+  deliveryFee   Decimal       @default(0) @db.Decimal(10, 2)
+  discount      Decimal       @default(0) @db.Decimal(10, 2)
+  total         Decimal       @default(0) @db.Decimal(10, 2)
+  couponCode    String?
+  // Payment provider references (Razorpay, or mock in dev).
+  paymentOrderId String?
+  paymentId      String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
   items OrderItem[]
 
+  @@index([customerId])
   @@map("orders")
 }
 
